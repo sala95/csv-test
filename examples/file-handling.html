@@ -94,7 +94,42 @@
         reader.readAsText();
         reader.onload = function(event){
             var csv = event.target.result;
-            var data = toObjects(csv, {separator:sep});
+            var data = $.csv.toObjects(csv, {separator:sep});
+            var hedersName = {
+              'date'  :'',
+              'amount':'',
+              'phone' :'',
+              'name'  :'',
+              'other' :''
+            };
+            // new data after filtering
+            var firstName=[], lastName=[], mobile=[], comment=[];
+            
+            for(var i=0; i<data.length; i++){
+              mobil[i] = data[i][hedersName.phone].split('/')[1];     // get the phone nmber
+              comment[i] = data[i][hedersName.other].split('/')[1];
+              
+              //get the names
+              var nameStr = data[i][hedersName.name].trim();
+              if(nameStr.indexOf(',')!=-1){
+                firstName[i] = nameStr.split(',')[1];
+                lastName[i] = nameStr.split(',')[0];
+              } else {
+                var tmp = nameStr.split(' ');
+                if(tmp.length<=3){
+                  firstName[i] = tmp[0];
+                  tmp.shift();
+                } else {
+                  firstName[i] = tmp[0]+' '+tmp[1];
+                  tmp.shift();
+                  tmp.shift();
+                }
+                lastName[i] = tmp.join(' ');
+                
+              } // end get names
+              
+            }
+            
         };
     }
   </script>
