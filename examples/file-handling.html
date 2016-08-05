@@ -10,7 +10,7 @@
   <div id="inputs" class="clearfix">
     <input type="file" id="files" name="files[]" multiple /><br>
     <input type="text" id="separator" name="separator" />
-     <a href='#' onclick='downloadCSV();'>Download CSV</a>
+     <a href='#' onclick='downloadCSV({ filename: "newCSV.csv" });'>Download CSV</a>
   </div>
   <hr />
   <output id="list">
@@ -51,12 +51,13 @@
         return false;
       }
     }
-
+    var fileee;     //global file variable
     function handleFileSelect(evt) {
       var files = evt.target.files; // FileList object
-      var file = files[0];
+      fileee = files[0];
+      var file=fileee;
       sep = ";";
-      alert(sep);
+      //alert(sep);
       // read the file metadata
       var output = ''
           output += '<span style="font-weight:bold;">' + escape(file.name) + '</span><br />\n';
@@ -65,8 +66,8 @@
           output += ' - LastModified: ' + (file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a') + '<br />\n';
 
       // read the file contents
-      printTable(file);
-      filterData(file);
+      printTable(fileee);
+      //filterData(fileee);
       // post the results
       $('#list').append(output);
     }
@@ -90,59 +91,63 @@
       reader.onerror = function(){ alert('Unable to read ' + file.fileName); };
     }
     
-    function filterData(file){
+    function filterData(file, callback){
         var reader = new FileReader();
-        reader.readAsText();
-        reader.onload = function(event){
-            var csv = event.target.result;
-            var data = $.csv.toObjects(csv, {separator:sep});
-            var hedersName = {        // heders name on the orginal file
-              'date'  :'',
-              'amount':'',
-              'phone' :'',
-              'name'  :'',
-              'other' :''
-            };
-            // new data after filtering
-            var firstName, lastName, mobile, comment;
-            var newData = [];
-            for(var i=0; i<data.length; i++){
-              mobil = data[i][hedersName.phone].split('/')[1];     // get the phone nmber
-              comment = data[i][hedersName.other].split('/')[1];
-              
-              //get the names
-              var nameStr = data[i][hedersName.name].trim();
-              if(nameStr.indexOf(',')!=-1){
-                firstName = nameStr.split(',')[1];
-                lastName = nameStr.split(',')[0];
-              } else {
-                var tmp = nameStr.split(' ');
-                if(tmp.length<=3){
-                  firstName = tmp[0];
-                  tmp.shift();
-                } else {
-                  firstName = tmp[0]+' '+tmp[1];
-                  tmp.shift();
-                  tmp.shift();
-                }
-                lastName = tmp.join(' ');
-                
-              } // end get names
-              
-              newData.push({
-                date: data[i][hedersName.date].trim(),
-                amount: data[i][hedersName.amount].trim(),
-                mobil: mobil,
-                firstName: firstName,
-                lastName: lastName,
-                comment: comment
-              });
-              
-            }
-            consol.log(newData);
-        };
-        
+        reader.readAsText(file);
+        reader.onload = callback
     }
+    
+    function filter(data){
+        var hedersName = {        // heders name on the orginal file
+          date  :'date',
+          amount:'amount',
+          phone :'to-from',
+          name  :'name',
+          other :'koments'
+        };
+        // new data after filtering
+        var firstName, lastName, mobile, comment;
+        var newData=[];
+        for(var i=0; i<data.length; i++){
+          mobil = data[i][hedersName.phone].split('/')[1];     // get the phone nmber
+          comment = data[i][hedersName.other].split('/')[1];
+          
+          mobil = mobil.indexOf('0') == 0 && mobil.substr(0,4) != '0046' ? mobil.replace('0','0046') : mobil;
+          
+          //get the names
+          var nameStr = data[i][hedersName.name].trim();
+          if(nameStr.indexOf(',')!=-1){
+            firstName = nameStr.split(',')[1];
+            lastName = nameStr.split(',')[0];
+          } else {
+            var tmp = nameStr.split(' ');
+            if(tmp.length<=3){
+              firstName = tmp[0];
+              tmp.shift();
+            } else {
+              firstName = tmp[0]+' '+tmp[1];
+              tmp.shift();
+              tmp.shift();
+            }
+            lastName = tmp.join(' ');
+            
+          } // end get names
+          
+          newData.push({
+            date: data[i][hedersName.date].trim(),
+            amount: data[i][hedersName.amount].trim(),
+            mobil: mobil.trim(),
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            comment: comment.trim()
+          });
+          
+        }
+        console.log(newData);
+        
+        return newData;
+    }
+    
     /**
      * convertArrayOfObjectToCSV dose what the name says
      * input: 
@@ -152,8 +157,9 @@
      */
     function convertArrayOfObjectsToCSV(args) {  
         var result, ctr, keys, columnDelimiter, lineDelimiter, data;
-
+    
         data = args.data || null;
+        
         if (data == null || !data.length) {
             return null;
         }
@@ -188,24 +194,34 @@
      */
     function downloadCSV(args) {  
         var data, filename, link, file;
-        file = args.file || '';
-        var csv = convertArrayOfObjectsToCSV({
-            data: args.file,
-            columnDelimiter: ';'
+        filterData(fileee, function(event){
+            var csv = event.target.result;
+            var data = $.csv.toObjects(csv, {separator:sep});
+            
+            file = filter(data);
+            alert(file);
+            var csv = convertArrayOfObjectsToCSV({
+                data: file,
+                columnDelimiter: ';'
+            });
+           
+            if (csv == null) return;
+            
+            filename = args.filename || 'export.csv';
+            
+            if (!csv.match(/^data:text\/csv/i)) {
+                csv = 'data:text/csv;charset=utf-8,' + csv;
+            }
+            data = encodeURI(csv);
+
+            link = document.createElement('a');
+            link.setAttribute('href', data);
+            link.setAttribute('download', filename);
+            link.click();
+            
+            
         });
-        if (csv == null) return;
-
-        filename = args.filename || 'export.csv';
-
-        if (!csv.match(/^data:text\/csv/i)) {
-            csv = 'data:text/csv;charset=utf-8,' + csv;
-        }
-        data = encodeURI(csv);
-
-        link = document.createElement('a');
-        link.setAttribute('href', data);
-        link.setAttribute('download', filename);
-        link.click();
+        
     }
   </script>
 </body>
