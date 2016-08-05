@@ -66,7 +66,7 @@
 
       // read the file contents
       printTable(file);
-
+      filterData(file);
       // post the results
       $('#list').append(output);
     }
@@ -96,7 +96,7 @@
         reader.onload = function(event){
             var csv = event.target.result;
             var data = $.csv.toObjects(csv, {separator:sep});
-            var hedersName = {
+            var hedersName = {        // heders name on the orginal file
               'date'  :'',
               'amount':'',
               'phone' :'',
@@ -104,34 +104,44 @@
               'other' :''
             };
             // new data after filtering
-            var firstName=[], lastName=[], mobile=[], comment=[];
-            
+            var firstName, lastName, mobile, comment;
+            var newData = [];
             for(var i=0; i<data.length; i++){
-              mobil[i] = data[i][hedersName.phone].split('/')[1];     // get the phone nmber
-              comment[i] = data[i][hedersName.other].split('/')[1];
+              mobil = data[i][hedersName.phone].split('/')[1];     // get the phone nmber
+              comment = data[i][hedersName.other].split('/')[1];
               
               //get the names
               var nameStr = data[i][hedersName.name].trim();
               if(nameStr.indexOf(',')!=-1){
-                firstName[i] = nameStr.split(',')[1];
-                lastName[i] = nameStr.split(',')[0];
+                firstName = nameStr.split(',')[1];
+                lastName = nameStr.split(',')[0];
               } else {
                 var tmp = nameStr.split(' ');
                 if(tmp.length<=3){
-                  firstName[i] = tmp[0];
+                  firstName = tmp[0];
                   tmp.shift();
                 } else {
-                  firstName[i] = tmp[0]+' '+tmp[1];
+                  firstName = tmp[0]+' '+tmp[1];
                   tmp.shift();
                   tmp.shift();
                 }
-                lastName[i] = tmp.join(' ');
+                lastName = tmp.join(' ');
                 
               } // end get names
               
+              newData.push({
+                date: data[i][hedersName.date].trim(),
+                amount: data[i][hedersName.amount].trim(),
+                mobil: mobil,
+                firstName: firstName,
+                lastName: lastName,
+                comment: comment
+              });
+              
             }
-            
+            consol.log(newData);
         };
+        
     }
     /**
      * convertArrayOfObjectToCSV dose what the name says
